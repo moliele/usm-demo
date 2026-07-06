@@ -75,3 +75,8 @@ variable "eks-instance-types" {
   default = [ "t3.large" ]
   description = "Instance type of the EKS nodes"
 }
+
+variable "enable_schema_registry_lookup" {
+  type    = bool
+  default = false
+}
