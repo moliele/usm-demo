@@ -115,8 +115,12 @@ data "aws_availability_zones" "subnets" {
 
 locals {
   subnets_to_privatelink = {
-    for subnet in aws_subnet.usm-private-subnet :
-        subnet.availability_zone_id => subnet.id
+  for subnet in aws_subnet.usm-private-subnet :
+  subnet.availability_zone_id => {
+    id    = subnet.id
+    az    = subnet.availability_zone
+    az_id = subnet.availability_zone_id
+  }
   }
 }
 
