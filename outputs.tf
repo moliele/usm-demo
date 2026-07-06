@@ -41,3 +41,19 @@ output "availability-zones" {
 output "account_id" {
   value = data.aws_caller_identity.current.account_id
 }
+
+output "environment_id" {
+  value = confluent_environment.usm_environment.id
+}
+
+output "region" {
+  value = var.region
+}
+
+output "route53_zone_id" {
+  value = aws_route53_zone.usm_privatelink.zone_id
+}
+
+output "vpc_endpoint_dns_name" {
+  value = module.privatelink.vpc_endpoint_dns_name
+}
