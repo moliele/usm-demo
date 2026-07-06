@@ -11,47 +11,73 @@ resource "confluent_environment" "usm_environment" {
   }
 }
 
-resource "confluent_private_link_attachment" "pla" {
-  cloud  = "AWS"
-  region = var.region
-  display_name = "usm-platt"
+resource "confluent_gateway" "usm_gateway" {
+  display_name = "usm-ingress-gateway"
+
   environment {
     id = confluent_environment.usm_environment.id
+  }
+
+  aws_ingress_private_link_gateway {
+    region = var.region
   }
 }
 
 module "privatelink" {
-  source                   = "./aws-privatelink-endpoint"
+  source = "./aws-ingress-access-point"
+
   vpc_id                   = aws_vpc.vpc.id
-  privatelink_service_name = confluent_private_link_attachment.pla.aws[0].vpc_endpoint_service_name
-  dns_domain               = confluent_private_link_attachment.pla.dns_domain
+  privatelink_service_name = one(confluent_gateway.usm_gateway.aws_ingress_private_link_gateway).vpc_endpoint_service_name
   subnets_to_privatelink   = local.subnets_to_privatelink
 }
 
-resource "confluent_private_link_attachment_connection" "plac" {
-  display_name = "usm-aws-plattc"
+resource "confluent_access_point" "usm_access_point" {
+  display_name = "usm-ingress-ap"
+
   environment {
     id = confluent_environment.usm_environment.id
   }
-  aws {
+
+  gateway {
+    id = confluent_gateway.usm_gateway.id
+  }
+
+  aws_ingress_private_link_endpoint {
     vpc_endpoint_id = module.privatelink.vpc_endpoint_id
   }
 
-  private_link_attachment {
-    id = confluent_private_link_attachment.pla.id
-  }
+  depends_on = [confluent_gateway.usm_gateway]
 }
 
-# Should not be necessary
-# resource "confluent_kafka_cluster" "basic" {
-#   display_name = "Basic Dummy"
-#   availability = "SINGLE_ZONE"
-#   cloud = "AWS"
-#   region = var.region
-#
-#   basic {}
-#
-#   environment {
-#     id = confluent_environment.usm_environment.id
-#   }
-# }
+locals {
+  usm_access_point_dns_domain    = one(confluent_access_point.usm_access_point.aws_ingress_private_link_endpoint).dns_domain
+  usm_frontdoor_host             = "api-${replace(local.usm_access_point_dns_domain, ".accesspoint.", ".accesspoint.glb.")}"
+}
+
+resource "aws_route53_zone" "usm_privatelink" {
+  name = local.usm_access_point_dns_domain
+
+  vpc {
+    vpc_id = aws_vpc.vpc.id
+  }
+
+  depends_on = [confluent_access_point.usm_access_point]
+}
+
+resource "aws_route53_record" "usm_privatelink_wildcard" {
+  zone_id = aws_route53_zone.usm_privatelink.zone_id
+  name    = "*.${local.usm_access_point_dns_domain}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [module.privatelink.vpc_endpoint_dns_name]
+
+  depends_on = [confluent_access_point.usm_access_point]
+}
+
+output "usm_frontdoor_url" {
+  value = "https://${local.usm_frontdoor_host}:443"
+}
+
+output "usm_access_point_dns_domain" {
+  value = local.usm_access_point_dns_domain
+}
