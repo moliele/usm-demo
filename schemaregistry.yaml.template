@@ -21,3 +21,7 @@ spec:
   enableSchemaExporter: true
   passwordEncoder:
     secretRef: password-encoder-secret
+
+  configOverrides:
+    server:
+      - resource.extension.class=io.confluent.schema.registry.usm.UsmSchemaRegistryExtension,io.confluent.schema.exporter.SchemaExporterResourceExtension,io.confluent.schema.importer.SchemaImporterResourceExtension,io.confluent.kafka.schemaregistry.rulehandler.RuleSetResourceExtension
