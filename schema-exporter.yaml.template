@@ -16,4 +16,4 @@ spec:
         basic:
           secretRef: cc-sr-credentials
   subjects: [":*:"]
-  contextType: AUTO
+  contextType: NONE
