@@ -107,6 +107,7 @@ Or you can also send a new field `surname` from CP and se how the mode FORDWARD 
 Whatever method you used to create your Kubernetes cluster, the deployment will consume resources and incure cost.
 In the spirit of **#tasty-not-wasty**, please clean up your resources again once you are done with the labs:
 
+    terraform -chdir=schema-registry destroy -var-file=../terraform.tfvars -auto-approve
     terraform destroy -auto-approve
 
 This command will destroy any AWS resources you have created and also remove the registration of your platform cluster,
