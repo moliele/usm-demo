@@ -55,7 +55,7 @@ In the next panel, choose "New agent" to create a new USM agent and register you
 The Terraform script already created your network configuration under the name "usm-platt", so you just need to it 
 select it and continue to the next panel. 
 
-![Choose usm-platt](images/PickUSMPlatt.png)
+![Choose usm-platt](images/PickUSMIngressGateway.png)
 
 In the next panel, choose an existing Service account created for you with the name "usm-manager-<Your Username>". 
 The Terraform script already assigned all the permissions required for this account.
