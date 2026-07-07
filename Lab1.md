@@ -13,7 +13,7 @@ cluster being deployed.
 
 Once the deployment is complete, we need the cluster id. You can simply use this command:
 
-    kubectl describe kafka | grep "Cluster Id"
+    kubectl describe kafka | grep "Cluster ID"
 
 Alternatively, you can use the Confluent Control Center. Make it accessible via
 
@@ -55,7 +55,7 @@ In the next panel, choose "New agent" to create a new USM agent and register you
 The Terraform script already created your network configuration under the name "usm-platt", so you just need to it 
 select it and continue to the next panel. 
 
-![Choose usm-platt](images/PickUSMPlatt.png)
+![Choose usm-platt](images/PickUSMIngressGateway.png)
 
 In the next panel, choose an existing Service account created for you with the name "usm-manager-<Your Username>". 
 The Terraform script already assigned all the permissions required for this account.
@@ -166,7 +166,7 @@ but instead marked as running.
 You can also navigate into the Cluster and should be able to observe a small traffic (from the Control Center) as well as some
 existing topics.
 
-### Create a topic and see it being observed in Confluent Cloud
+### Create topics and see it being observed in Confluent Cloud
 
 To create a new topic in your cluster, you can execute a bash shell inside one of the Kafka pods:
 
@@ -175,6 +175,7 @@ To create a new topic in your cluster, you can execute a bash shell inside one o
 In here, you can invoke `kafka-topics` to create a topic:
 
     kafka-topics --create --topic users --partitions 3 --replication-factor 3 --bootstrap-server kafka:9092
+    kafka-topics --create --topic pageviews --partitions 3 --replication-factor 3 --bootstrap-server kafka:9092
 
 Exit from the bash shell and return to your Confluent Cloud console and refresh the topic list to see new topic 
 appearing.
@@ -225,6 +226,40 @@ Control Center to see it deployed. It should be up and running in a few seconds.
 
 Head over to the Confluent Cloud and navigate into your Confluent Platform Cluster, and then to the Connector page.
 You should see the connector stats popping up there almost immediately.
+
+You can do the same for pageviews topic changing the "quickstart" value for pageviews.
+
+But you can also execute the following cURL commands:
+
+    kubectl exec -n confluent -it connect-0 -- \
+    curl -X POST http://localhost:8083/connectors \
+    -H "Content-Type: application/json" \
+    -d '{
+            "name": "DG_Users",
+            "config": {
+                "value.converter.schema.registry.url":     "http://schemaregistry.confluent.svc.cluster.local:8081",
+                "name": "DG_Users",
+                "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
+                "value.converter": "io.confluent.connect.avro.AvroConverter",
+                "kafka.topic": "users",
+                "quickstart": "users"
+            }
+        }'
+
+    kubectl exec -n confluent -it connect-0 -- \
+    curl -X POST http://localhost:8083/connectors \
+    -H "Content-Type: application/json" \
+    -d '{
+            "name": "DG_Pageviews",
+            "config": {
+                "value.converter.schema.registry.url": "http://schemaregistry.confluent.svc.cluster.local:8081",
+                "name": "DG_Pageviews",
+                "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
+                "value.converter": "io.confluent.connect.avro.AvroConverter",
+                "kafka.topic": "pageviews",
+                "quickstart": "pageviews"
+            }
+        }'
 
 Congratulations, you have finished Lab 1. It is time to head over to Lab 2 to look at the schema registry as well.
 
