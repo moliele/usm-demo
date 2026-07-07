@@ -13,15 +13,25 @@ USM Agent did not include the schema registry URL and the associate API Key, so 
 
 Head to the Confluent Cloud UI and navigate to the schema registry entry in your new environment.
 
-Here , you should find 0 contracts and no API Keys. First, make a note of your Private endpoint.
+![Schema Registry](images/SchemaRegistry2.png)
 
-![Schema Registry](images/SchemaRegistry.png)
+Here , you should find 0 contracts and no API Keys. 
 
 Then click on API Keys on the right and create a new API Key. Choose the Service Account option and pick
 the service account the Terraform script created for you, usually **usm-manager**.
 
 Optionally, give the key a name and a description, then create the API key and make a note of the key and secret and/or
 download it. 
+
+Now come back to the schema registry entry: 
+![Schema Registry](images/SchemaRegistry2.png)
+
+As we are using access points, the private endpoint that the UI shows is not the one that we need.
+So please, come back to the terminal where you executed the terraform commands and now execute the following:
+
+    terraform -chdir=schema-registry apply -var-file=../terraform.tfvars
+
+It will give you an output called `cfk_remote_schema_registry_endpoint` that you need to note as schema registry private endpoint for the following steps.
 
 ### Schema password secret
 
@@ -49,7 +59,7 @@ with your saved Schema registry endpoint:
 
 ### Set up exporters and importers
 
-As a final step we are going to set up the schema exporters and importers. There are two template files we need 
+As a final step, we are going to set up the schema exporters and importers. There are two template files we need 
 to adjust by adding the Cloud Schema registry endpoint.
 
     cp schema-exporter.yaml.template schema-exporter.yaml
@@ -72,6 +82,25 @@ originally created by the connector we earlier deployed.
 
 You can create additional schemas in your CP deployment and see them being exported, and maybe add a new schema
 in the Confluent Cloud schema registry and see it travel the other way.
+
+### Check the schema lifecycle
+
+You can add a data quality rule to the `users-value` schema from the CC UI and check if it reaches CP, as now CC is the primary registry.
+
+    kubectl exec -it schemaregistry-0 -- \
+    curl -s \
+    http://localhost:8081/subjects/users-value/versions/latest | jq .
+
+Or you can also send a new field `surname` from CP and se how the mode FORDWARD sends it to CC:
+
+    kubectl exec -it -n confluent schemaregistry-0 -- \
+    curl -s -X POST \
+    -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+    http://localhost:8081/subjects/users-value/versions \
+    --data '{
+    "schemaType": "AVRO",
+    "schema": "{\"type\":\"record\",\"name\":\"users\",\"namespace\":\"ksql\",\"fields\":[{\"name\":\"registertime\",\"type\":\"long\"},{\"name\":\"userid\",\"type\":\"string\"},{\"name\":\"regionid\",\"type\":\"string\"},{\"name\":\"gender\",\"type\":\"string\"},{\"name\":\"surname\",\"type\":[\"null\",\"string\"],\"default\":null}],\"connect.name\":\"ksql.users\"}"
+    }' | jq .
 
 # Finally, cleanup
 
